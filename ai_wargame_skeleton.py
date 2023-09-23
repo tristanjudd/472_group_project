@@ -310,22 +310,58 @@ class Game:
             self.remove_dead(coord)
 
     def is_valid_move(self, coords : CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Check that coords are within board dimensions"""
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
+
+        """Check that source coords are not empty and unit belongs to current player"""
         unit = self.get(coords.src)
         if unit is None or unit.player != self.next_player:
             return False
-        unit = self.get(coords.dst)
-        return (unit is None)
+
+        # Begin Tristan code
+        """Check that destination cell is source (self-destruct), up, right, down or left"""
+        if coords.dst != coords.src and coords.dst not in coords.src.iter_adjacent():
+            return False
+
+        """If destination coords is empty, this is a move action"""
+        # if self.get(coords.dst) is None:
+        #     """If unit is an AI, Firewall or Program, it cannot move while engaged"""
+        #     if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+        #         neighborhood = coords.src.iter_adjacent()
+        #         """Check if unit is egnaged"""
+        #         for n in neighborhood:
+        #             n_unit = self.get(n)
+        #             if n_unit is not None and n_unit.player != self.next_player:
+        #                 print("This unit cannot move while engaged")
+        #                 return False
+        #End Tristan code
+
+        return True
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
-        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Validate and perform a move expressed as a CoordPair"""
         if self.is_valid_move(coords):
-            self.set(coords.dst,self.get(coords.src))
-            self.set(coords.src,None)
-            return (True,"")
-        return (False,"invalid move")
+            """If destination is empty, this is a move action"""
+            if self.get(coords.dst) is None:
+                """Check whether unit can move while engaged"""
+                unit = self.get(coords.src)
+                if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+                    """If not, check whether engaged"""
+                    neighborhood = coords.src.iter_adjacent()
+                    for n in neighborhood:
+                        n_unit = self.get(n)
+                        if n_unit is not None and n_unit.player != self.next_player:
+                            return (False, "This unit cannot move while engaged")
+
+                self.set(coords.dst,self.get(coords.src))
+                self.set(coords.src,None)
+                return (True, f"Moved {unit.type.name} unit from {coords.src} to {coords.dst}")
+            else:
+                # TODO: implement attack/repair/self-destruct logic here
+                return (True, "Placeholder: This is an attack/repair/self-destruct action")
+        else:
+            return (False,"invalid move")
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -404,7 +440,10 @@ class Game:
                     self.next_turn()
                     break
                 else:
-                    print("The move is not valid! Try again.")
+                    if result is not None and result != "":
+                        print(result)
+                    else:
+                        print("The move is not valid! Try again.")
 
     def computer_turn(self) -> CoordPair | None:
         """Computer plays a move."""
