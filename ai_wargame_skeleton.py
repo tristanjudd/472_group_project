@@ -236,6 +236,16 @@ class Stats:
     total_seconds: float = 0.0
 
 ##############################################################################################################
+class Logger:
+    game: Game
+    def __init__(self, game):
+        self.game = game
+        options = game.options
+        self.output_file = open("gameTrace-" + options.alpha_beta + "-" + options.max_time + "-" + options.max_turns + ".txt", "a")
+
+
+
+##############################################################################################################
 
 @dataclass(slots=True)
 class Game:
@@ -247,8 +257,10 @@ class Game:
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai : bool = True
     _defender_has_ai : bool = True
+    logger: Logger
 
     def __post_init__(self):
+        self.logger = Logger(self)
         """Automatically called after class init to set up the default board state."""
         dim = self.options.dim
         self.board = [[None for _ in range(dim)] for _ in range(dim)]
