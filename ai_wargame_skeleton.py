@@ -32,6 +32,13 @@ class Player(Enum):
             return Player.Defender
         else:
             return Player.Attacker
+        
+    def to_string(self) -> str:
+        if self is Player.Attacker:
+            return "Attacker"
+        else:
+            return "Defender"
+
 
 class GameType(Enum):
     AttackerVsDefender = 0
@@ -238,11 +245,53 @@ class Stats:
 ##############################################################################################################
 class Logger:
     game: Game
-    def __init__(self, game):
+    def __init__(self, game: Game):
         self.game = game
-        options = game.options
-        self.output_file = open("gameTrace-" + options.alpha_beta + "-" + options.max_time + "-" + options.max_turns + ".txt", "a")
 
+        self.setup_output_file()
+        self.log_game_parameters()
+
+        self.log_nl()
+        self.log_nl()
+        self.log_nl("INITIAL CONFIGURATION")
+        self.log_nl(game.board_to_string())
+        self.log_nl()
+
+    def log_game_parameters(self):
+        options = self.game.options
+        is_alpha_beta = str(options.alpha_beta).lower()
+        max_time = str(options.max_time)
+        max_turns = str(options.max_turns)
+
+        self.log_nl("GAME PARAMETERS")
+        self.log_nl(f'Timeout Value: {max_time} seconds')
+        if options.alpha_beta:
+            self.output_file.write("There is an AI player") 
+        else:
+            self.output_file.write("There is no AI player")
+        self.log_nl(f' (alpha-beta={is_alpha_beta})')
+
+        #TODO Actually consider if one of the players is human and print their heuristic
+        self.log_nl("Player 1 is a Human")
+        self.log_nl("Player 2 is a Human")
+
+    def setup_output_file(self):
+        options = self.game.options
+        is_alpha_beta = str(options.alpha_beta).lower()
+        max_time = str(options.max_time)
+        max_turns = str(options.max_turns)
+        
+        self.output_file = open(f'gameTrace-{is_alpha_beta}-{max_time}-{max_turns}.txt', "w")
+
+    def log_nl(self, str: str = ""):
+        self.output_file.write(f'{str}\n')
+
+    def log_action(self, move: CoordPair):
+        self.log_nl()
+        self.log_nl(f'Turn # {self.game.turns_played + 1}')
+        self.log_nl(f'Current Player: {self.game.next_player}')
+        self.log_nl(f'Moved from {move.src} to {move.dst}')
+        self.log_nl(self.game.board_to_string())
 
 
 ##############################################################################################################
@@ -257,10 +306,8 @@ class Game:
     stats: Stats = field(default_factory=Stats)
     _attacker_has_ai : bool = True
     _defender_has_ai : bool = True
-    logger: Logger
 
     def __post_init__(self):
-        self.logger = Logger(self)
         """Automatically called after class init to set up the default board state."""
         dim = self.options.dim
         self.board = [[None for _ in range(dim)] for _ in range(dim)]
@@ -277,6 +324,9 @@ class Game:
         self.set(Coord(md-2,md),Unit(player=Player.Attacker,type=UnitType.Program))
         self.set(Coord(md,md-2),Unit(player=Player.Attacker,type=UnitType.Program))
         self.set(Coord(md-1,md-1),Unit(player=Player.Attacker,type=UnitType.Firewall))
+
+        self.logger = Logger(self)
+
 
     def clone(self) -> Game:
         """Make a new copy of a game for minimax recursion.
@@ -368,6 +418,9 @@ class Game:
 
                 self.set(coords.dst,self.get(coords.src))
                 self.set(coords.src,None)
+
+                self.logger.log_action(coords)
+
                 return (True, f"Moved {unit.type.name} unit from {coords.src} to {coords.dst}")
             else:
                 # TODO: implement attack/repair/self-destruct logic here
@@ -382,12 +435,15 @@ class Game:
 
     def to_string(self) -> str:
         """Pretty text representation of the game."""
-        dim = self.options.dim
         output = ""
         output += f"Next player: {self.next_player.name}\n"
         output += f"Turns played: {self.turns_played}\n"
+        return output + self.board_to_string()
+    
+    def board_to_string(self) -> str:
+        dim = self.options.dim
         coord = Coord()
-        output += "\n   "
+        output = "\n   "
         for col in range(dim):
             coord.col = col
             label = coord.col_string()
@@ -462,6 +518,7 @@ class Game:
         mv = self.suggest_move()
         if mv is not None:
             (success,result) = self.perform_move(mv)
+            #TODO Log additional information (3.1 and 3.2)
             if success:
                 print(f"Computer {self.next_player.name}: ",end='')
                 print(result)
@@ -623,6 +680,7 @@ def main():
         winner = game.has_winner()
         if winner is not None:
             print(f"{winner.name} wins!")
+            game.logger.writeWinner()
             break
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
