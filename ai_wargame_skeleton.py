@@ -292,6 +292,9 @@ class Logger:
         self.log_nl(f'Current Player: {self.game.next_player}')
         self.log_nl(f'Moved from {move.src} to {move.dst}')
         self.log_nl(self.game.board_to_string())
+    
+    def write_winner(self):
+        self.log_nl(f'{self.game.has_winner()} wins in {self.game.turns_played} turns')
 
 
 ##############################################################################################################
@@ -680,7 +683,7 @@ def main():
         winner = game.has_winner()
         if winner is not None:
             print(f"{winner.name} wins!")
-            game.logger.writeWinner()
+            game.logger.write_winner()
             break
         if game.options.game_type == GameType.AttackerVsDefender:
             game.human_turn()
