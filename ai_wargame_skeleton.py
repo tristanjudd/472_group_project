@@ -266,14 +266,20 @@ class Logger:
         self.log_nl("GAME PARAMETERS")
         self.log_nl(f'Timeout Value: {max_time} seconds')
         if options.alpha_beta:
-            self.output_file.write("There is an AI player") 
+            self.log_nl(f' (alpha-beta={is_alpha_beta})')
+            
+        #TODO Real heuristic values
+        if options.game_type == GameType.AttackerVsComp or options.game_type == GameType.AttackerVsDefender:
+            self.log_nl("Player 1 is a Human")
         else:
-            self.output_file.write("There is no AI player")
-        self.log_nl(f' (alpha-beta={is_alpha_beta})')
+            heuristic = "e0"
+            self.log_nl(f'Player 1 is an AI with heuristic {heuristic}')
 
-        #TODO Actually consider if one of the players is human and print their heuristic
-        self.log_nl("Player 1 is a Human")
-        self.log_nl("Player 2 is a Human")
+        if options.game_type == GameType.AttackerVsDefender or options.game_type == GameType.CompVsDefender:
+            self.log_nl("Player 2 is a Human")
+        else:
+            heuristic = "e0"
+            self.log_nl(f'Player 2 is an AI with heuristic {heuristic}')
 
     def setup_output_file(self):
         options = self.game.options
