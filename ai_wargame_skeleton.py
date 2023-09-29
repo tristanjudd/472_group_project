@@ -412,6 +412,7 @@ class Game:
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform a move expressed as a CoordPair"""
+        unit = self.get(coords.src)
         if self.is_valid_move(coords):
             """If destination is empty, this is a move action"""
             if self.get(coords.dst) is None:
@@ -431,11 +432,72 @@ class Game:
                 self.logger.log_action(coords)
 
                 return (True, f"Moved {unit.type.name} unit from {coords.src} to {coords.dst}")
+
             else:
                 # TODO: implement attack/repair/self-destruct logic here
-                return (True, "Placeholder: This is an attack/repair/self-destruct action")
+                src_unit = self.get(coords.src)
+                target_unit = self.get(coords.dst)
+
+                """Self-destruct mode"""
+                """Check if the target is same as the source """
+                if src_unit == target_unit:
+                    src_unit.health = 0
+                    self.remove_dead(coords.src)
+                    neighborhood = coords.src.iter_range(1)
+                    total_damage = 0
+                    for n in neighborhood:
+                        n_unit = self.get(n)
+                        if n_unit is not None:
+                            n_unit.mod_health(-2)
+                            total_damage += 2
+                            if n_unit is not n_unit.is_alive():
+                                self.remove_dead(n)
+                    return True, f"{unit.type.name} Self-destructed at {coords.src} for {total_damage} total damage"
+
+                """Repair-mode"""
+                """Check if the target unit is friendly"""
+                if src_unit.player.name == target_unit.player.name:
+                    total_repair = 0
+                    if src_unit.type in [UnitType.AI, UnitType.Tech]:
+                        """Check the repair move if valid, invalid if the target unit health is above 9"""
+                        if target_unit.health != 9:
+                            amt = src_unit.repair_amount(target_unit)
+                            if src_unit.type in [UnitType.AI] and target_unit.type in [UnitType.Virus, UnitType.Tech]:
+                                target_unit.mod_health(amt)
+                                total_repair += amt
+                            elif src_unit.type in [UnitType.Tech] and target_unit.type in [UnitType.Firewall,
+                                                                                           UnitType.AI,
+                                                                                           UnitType.Program]:
+                                target_unit.mod_health(amt)
+                                total_repair += amt
+                            else:
+                                return False, "Invalid move!"
+                        else:
+                            return False, "Invalid move!"
+                    else:
+                        return False, "Invalid move!"
+
+                    return True, (f"{unit.type.name} Repaired from {coords.src} to {coords.dst} repaired {total_repair}"
+                                  f" health points")
+
+                else:
+                    """Attack mode"""
+                    trgt_damage_amt = src_unit.damage_amount(target_unit)
+                    src_damage_amt = target_unit.damage_amount(src_unit)
+
+                    src_unit.mod_health(-src_damage_amt)
+                    target_unit.mod_health(-trgt_damage_amt)
+                    if src_unit is not src_unit.is_alive():
+                        self.remove_dead(coords.src)
+
+                    if target_unit is not target_unit.is_alive():
+                        self.remove_dead(coords.dst)
+
+                    return True, (f"{unit.type.name} Attacked from {coords.src} to {coords.dst} \n"
+                                  f"Combat Damage: to source = {src_damage_amt}, to target = {trgt_damage_amt} ")
+
         else:
-            return (False,"invalid move")
+            return False,"Invalid move!"
 
     def next_turn(self):
         """Transitions game to the next turn."""
