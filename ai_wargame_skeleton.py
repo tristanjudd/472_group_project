@@ -414,6 +414,7 @@ class Game:
         """Validate and perform a move expressed as a CoordPair"""
         unit = self.get(coords.src)
         if self.is_valid_move(coords):
+            self.logger.log_action(coords)
             """If destination is empty, this is a move action"""
             if self.get(coords.dst) is None:
                 """Check whether unit can move while engaged"""
@@ -428,8 +429,6 @@ class Game:
 
                 self.set(coords.dst,self.get(coords.src))
                 self.set(coords.src,None)
-
-                self.logger.log_action(coords)
 
                 return (True, f"Moved {unit.type.name} unit from {coords.src} to {coords.dst}")
 
