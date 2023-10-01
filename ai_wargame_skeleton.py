@@ -427,6 +427,20 @@ class Game:
                         if n_unit is not None and n_unit.player != self.next_player:
                             return (False, "This unit cannot move while engaged")
 
+                # Check if unit is AI, Firewall or tech; their movement is restricted
+                if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+                    if unit.player == Player.Attacker:
+                        if coords.dst.row == coords.src.row and coords.dst.col == coords.src.col + 1:
+                            return (False, "This unit can't move right")
+                        elif coords.dst.row == coords.src.row + 1 and coords.dst.col == coords.src.col:
+                            return (False, "This unit can't move down")
+                    else:
+                        if coords.dst.row == coords.src.row and coords.dst.col == coords.src.col - 1:
+                            return (False, "This unit can't move left")
+                        elif coords.dst.row == coords.src.row - 1 and coords.dst.col == coords.src.col:
+                            return (False, "This unit can't move up")
+
+
                 self.set(coords.dst,self.get(coords.src))
                 self.set(coords.src,None)
 
