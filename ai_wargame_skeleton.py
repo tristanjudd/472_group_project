@@ -256,6 +256,9 @@ class Logger:
         self.log_nl("INITIAL CONFIGURATION")
         self.log_nl(game.board_to_string())
         self.log_nl()
+    
+    def __del__(self):
+        self.output_file.close()
 
     def log_game_parameters(self):
         options = self.game.options
