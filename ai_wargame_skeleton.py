@@ -348,7 +348,32 @@ class Game:
         new = copy.copy(self)
         new.board = copy.deepcopy(self.board)
         return new
-
+    
+    def start(self):
+            # the main game loop
+        while True:
+            print()
+            print(self)
+            winner = self.has_winner()
+            if winner is not None:
+                print(f"{winner.name} wins!")
+                self.logger.write_winner()
+                break
+            if self.options.game_type == GameType.AttackerVsDefender:
+                self.human_turn()
+            elif self.options.game_type == GameType.AttackerVsComp and self.next_player == Player.Attacker:
+                self.human_turn()
+            elif self.options.game_type == GameType.CompVsDefender and self.next_player == Player.Defender:
+                self.human_turn()
+            else:
+                player = self.next_player
+                move = self.computer_turn()
+                if move is not None:
+                    self.post_move_to_broker(move)
+                else:
+                    print("Computer doesn't know what to do!!!")
+                    exit(1)
+    
     def is_empty(self, coord : Coord) -> bool:
         """Check if contents of a board cell of the game at Coord is empty (must be valid coord)."""
         return self.board[coord.row][coord.col] is None
@@ -762,30 +787,8 @@ def main():
 
     # create a new game
     game = Game(options=options)
+    game.start()
 
-    # the main game loop
-    while True:
-        print()
-        print(game)
-        winner = game.has_winner()
-        if winner is not None:
-            print(f"{winner.name} wins!")
-            game.logger.write_winner()
-            break
-        if game.options.game_type == GameType.AttackerVsDefender:
-            game.human_turn()
-        elif game.options.game_type == GameType.AttackerVsComp and game.next_player == Player.Attacker:
-            game.human_turn()
-        elif game.options.game_type == GameType.CompVsDefender and game.next_player == Player.Defender:
-            game.human_turn()
-        else:
-            player = game.next_player
-            move = game.computer_turn()
-            if move is not None:
-                game.post_move_to_broker(move)
-            else:
-                print("Computer doesn't know what to do!!!")
-                exit(1)
 
 ##############################################################################################################
 
