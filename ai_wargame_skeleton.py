@@ -430,6 +430,20 @@ class Game:
                         if n_unit is not None and n_unit.player != self.next_player:
                             return (False, "This unit cannot move while engaged")
 
+                # Check if unit is AI, Firewall or tech; their movement is restricted
+                if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+                    if unit.player == Player.Attacker:
+                        if coords.dst.row == coords.src.row and coords.dst.col == coords.src.col + 1:
+                            return (False, "This unit can't move right")
+                        elif coords.dst.row == coords.src.row + 1 and coords.dst.col == coords.src.col:
+                            return (False, "This unit can't move down")
+                    else:
+                        if coords.dst.row == coords.src.row and coords.dst.col == coords.src.col - 1:
+                            return (False, "This unit can't move left")
+                        elif coords.dst.row == coords.src.row - 1 and coords.dst.col == coords.src.col:
+                            return (False, "This unit can't move up")
+
+
                 self.set(coords.dst,self.get(coords.src))
                 self.set(coords.src,None)
 
@@ -461,7 +475,7 @@ class Game:
                 if src_unit.player.name == target_unit.player.name:
                     total_repair = 0
                     if src_unit.type in [UnitType.AI, UnitType.Tech]:
-                        """Check the repair move if valid, invalid if the target unit health is above 9"""
+                        """Check the repair move if valid, throw error if the target unit health is above 9"""
                         if target_unit.health != 9:
                             amt = src_unit.repair_amount(target_unit)
                             if src_unit.type in [UnitType.AI] and target_unit.type in [UnitType.Virus, UnitType.Tech]:
@@ -473,13 +487,13 @@ class Game:
                                 target_unit.mod_health(amt)
                                 total_repair += amt
                             else:
-                                return False, "Invalid move!"
+                                return False, f"Invalid move! {target_unit.type.name} can not be repaired by {src_unit.type}"
                         else:
-                            return False, "Invalid move!"
+                            return False, "Invalid move! Can not be repaired when health is full"
                     else:
-                        return False, "Invalid move!"
+                        return False, f"Invalid move! {src_unit.type.name} can not repair"
 
-                    return True, (f"{unit.type.name} Repaired from {coords.src} to {coords.dst} repaired {total_repair}"
+                    return True, (f"{src_unit.type.name} Repaired from {coords.src} to {coords.dst} repaired {total_repair}"
                                   f" health points")
 
                 else:
