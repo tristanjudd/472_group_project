@@ -65,6 +65,6 @@ class Logger:
         self.log_nl(f'Moved from {move.src} to {move.dst}')
         self.log_nl(self.game.board_to_string())
     
-    def write_winner(self, winner: str, turns: int):
-        self.log_nl(f'{winner} wins in {turns} turns')
+    def write_winner(self):
+        self.log_nl(f'{self.game.has_winner()} wins in {self.game.turns_played} turns')
 
