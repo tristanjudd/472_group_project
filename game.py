@@ -1,44 +1,20 @@
 from __future__ import annotations
-import argparse
+import logger
+from enum import Enum
 import copy
 from datetime import datetime
-from enum import Enum
 from dataclasses import dataclass, field
 from time import sleep
 from typing import Tuple, TypeVar, Type, Iterable, ClassVar
 import random
 import requests
+from player import Player
+from coord import CoordPair, Coord
+from unit import Unit, UnitType
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
 MAX_HEURISTIC_SCORE = 2000000000
 MIN_HEURISTIC_SCORE = -2000000000
-
-class UnitType(Enum):
-    """Every unit type."""
-    AI = 0
-    Tech = 1
-    Virus = 2
-    Program = 3
-    Firewall = 4
-
-class Player(Enum):
-    """The 2 players."""
-    Attacker = 0
-    Defender = 1
-
-    def next(self) -> Player:
-        """The next (other) player."""
-        if self is Player.Attacker:
-            return Player.Defender
-        else:
-            return Player.Attacker
-        
-    def to_string(self) -> str:
-        if self is Player.Attacker:
-            return "Attacker"
-        else:
-            return "Defender"
-
 
 class GameType(Enum):
     AttackerVsDefender = 0
@@ -46,180 +22,6 @@ class GameType(Enum):
     CompVsDefender = 2
     CompVsComp = 3
 
-##############################################################################################################
-
-@dataclass()
-class Unit:
-    player: Player = Player.Attacker
-    type: UnitType = UnitType.Program
-    health : int = 9
-    # class variable: damage table for units (based on the unit type constants in order)
-    damage_table : ClassVar[list[list[int]]] = [
-        [3,3,3,3,1], # AI
-        [1,1,6,1,1], # Tech
-        [9,6,1,6,1], # Virus
-        [3,3,3,3,1], # Program
-        [1,1,1,1,1], # Firewall
-    ]
-    # class variable: repair table for units (based on the unit type constants in order)
-    repair_table : ClassVar[list[list[int]]] = [
-        [0,1,1,0,0], # AI
-        [3,0,0,3,3], # Tech
-        [0,0,0,0,0], # Virus
-        [0,0,0,0,0], # Program
-        [0,0,0,0,0], # Firewall
-    ]
-
-    def is_alive(self) -> bool:
-        """Are we alive ?"""
-        return self.health > 0
-
-    def mod_health(self, health_delta : int):
-        """Modify this unit's health by delta amount."""
-        self.health += health_delta
-        if self.health < 0:
-            self.health = 0
-        elif self.health > 9:
-            self.health = 9
-
-    def to_string(self) -> str:
-        """Text representation of this unit."""
-        p = self.player.name.lower()[0]
-        t = self.type.name.upper()[0]
-        return f"{p}{t}{self.health}"
-    
-    def __str__(self) -> str:
-        """Text representation of this unit."""
-        return self.to_string()
-    
-    def damage_amount(self, target: Unit) -> int:
-        """How much can this unit damage another unit."""
-        amount = self.damage_table[self.type.value][target.type.value]
-        if target.health - amount < 0:
-            return target.health
-        return amount
-
-    def repair_amount(self, target: Unit) -> int:
-        """How much can this unit repair another unit."""
-        amount = self.repair_table[self.type.value][target.type.value]
-        if target.health + amount > 9:
-            return 9 - target.health
-        return amount
-
-##############################################################################################################
-
-@dataclass()
-class Coord:
-    """Representation of a game cell coordinate (row, col)."""
-    row : int = 0
-    col : int = 0
-
-    def col_string(self) -> str:
-        """Text representation of this Coord's column."""
-        coord_char = '?'
-        if self.col < 16:
-                coord_char = "0123456789abcdef"[self.col]
-        return str(coord_char)
-
-    def row_string(self) -> str:
-        """Text representation of this Coord's row."""
-        coord_char = '?'
-        if self.row < 26:
-                coord_char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[self.row]
-        return str(coord_char)
-
-    def to_string(self) -> str:
-        """Text representation of this Coord."""
-        return self.row_string()+self.col_string()
-    
-    def __str__(self) -> str:
-        """Text representation of this Coord."""
-        return self.to_string()
-    
-    def clone(self) -> Coord:
-        """Clone a Coord."""
-        return copy.copy(self)
-
-    def iter_range(self, dist: int) -> Iterable[Coord]:
-        """Iterates over Coords inside a rectangle centered on our Coord."""
-        for row in range(self.row-dist,self.row+1+dist):
-            for col in range(self.col-dist,self.col+1+dist):
-                yield Coord(row,col)
-
-    def iter_adjacent(self) -> Iterable[Coord]:
-        """Iterates over adjacent Coords."""
-        yield Coord(self.row-1,self.col)
-        yield Coord(self.row,self.col-1)
-        yield Coord(self.row+1,self.col)
-        yield Coord(self.row,self.col+1)
-
-    @classmethod
-    def from_string(cls, s : str) -> Coord | None:
-        """Create a Coord from a string. ex: D2."""
-        s = s.strip()
-        for sep in " ,.:;-_":
-                s = s.replace(sep, "")
-        if (len(s) == 2):
-            coord = Coord()
-            coord.row = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".find(s[0:1].upper())
-            coord.col = "0123456789abcdef".find(s[1:2].lower())
-            return coord
-        else:
-            return None
-
-##############################################################################################################
-
-@dataclass()
-class CoordPair:
-    """Representation of a game move or a rectangular area via 2 Coords."""
-    src : Coord = field(default_factory=Coord)
-    dst : Coord = field(default_factory=Coord)
-
-    def to_string(self) -> str:
-        """Text representation of a CoordPair."""
-        return self.src.to_string()+" "+self.dst.to_string()
-    
-    def __str__(self) -> str:
-        """Text representation of a CoordPair."""
-        return self.to_string()
-
-    def clone(self) -> CoordPair:
-        """Clones a CoordPair."""
-        return copy.copy(self)
-
-    def iter_rectangle(self) -> Iterable[Coord]:
-        """Iterates over cells of a rectangular area."""
-        for row in range(self.src.row,self.dst.row+1):
-            for col in range(self.src.col,self.dst.col+1):
-                yield Coord(row,col)
-
-    @classmethod
-    def from_quad(cls, row0: int, col0: int, row1: int, col1: int) -> CoordPair:
-        """Create a CoordPair from 4 integers."""
-        return CoordPair(Coord(row0,col0),Coord(row1,col1))
-    
-    @classmethod
-    def from_dim(cls, dim: int) -> CoordPair:
-        """Create a CoordPair based on a dim-sized rectangle."""
-        return CoordPair(Coord(0,0),Coord(dim-1,dim-1))
-    
-    @classmethod
-    def from_string(cls, s : str) -> CoordPair | None:
-        """Create a CoordPair from a string. ex: A3 B2"""
-        s = s.strip()
-        for sep in " ,.:;-_":
-                s = s.replace(sep, "")
-        if (len(s) == 4):
-            coords = CoordPair()
-            coords.src.row = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".find(s[0:1].upper())
-            coords.src.col = "0123456789abcdef".find(s[1:2].lower())
-            coords.dst.row = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".find(s[2:3].upper())
-            coords.dst.col = "0123456789abcdef".find(s[3:4].lower())
-            return coords
-        else:
-            return None
-
-##############################################################################################################
 
 @dataclass()
 class Options:
@@ -241,69 +43,6 @@ class Stats:
     """Representation of the global game statistics."""
     evaluations_per_depth : dict[int,int] = field(default_factory=dict)
     total_seconds: float = 0.0
-
-##############################################################################################################
-class Logger:
-    game: Game
-    def __init__(self, game: Game):
-        self.game = game
-
-        self.setup_output_file()
-        self.log_game_parameters()
-
-        self.log_nl()
-        self.log_nl()
-        self.log_nl("INITIAL CONFIGURATION")
-        self.log_nl(game.board_to_string())
-        self.log_nl()
-    
-    def __del__(self):
-        self.output_file.close()
-
-    def log_game_parameters(self):
-        options = self.game.options
-        is_alpha_beta = str(options.alpha_beta).lower()
-        max_time = str(options.max_time)
-        max_turns = str(options.max_turns)
-
-        self.log_nl("GAME PARAMETERS")
-        self.log_nl(f'Timeout Value: {max_time} seconds')
-        if options.alpha_beta:
-            self.log_nl(f' (alpha-beta={is_alpha_beta})')
-            
-        #TODO Real heuristic values
-        if options.game_type == GameType.AttackerVsComp or options.game_type == GameType.AttackerVsDefender:
-            self.log_nl("Player 1 is a Human")
-        else:
-            heuristic = "e0"
-            self.log_nl(f'Player 1 is an AI with heuristic {heuristic}')
-
-        if options.game_type == GameType.AttackerVsDefender or options.game_type == GameType.CompVsDefender:
-            self.log_nl("Player 2 is a Human")
-        else:
-            heuristic = "e0"
-            self.log_nl(f'Player 2 is an AI with heuristic {heuristic}')
-
-    def setup_output_file(self):
-        options = self.game.options
-        is_alpha_beta = str(options.alpha_beta).lower()
-        max_time = str(options.max_time)
-        max_turns = str(options.max_turns)
-        
-        self.output_file = open(f'gameTrace-{is_alpha_beta}-{max_time}-{max_turns}.txt', "w")
-
-    def log_nl(self, str: str = ""):
-        self.output_file.write(f'{str}\n')
-
-    def log_action(self, move: CoordPair):
-        self.log_nl()
-        self.log_nl(f'Turn # {self.game.turns_played + 1}')
-        self.log_nl(f'Current Player: {self.game.next_player}')
-        self.log_nl(f'Moved from {move.src} to {move.dst}')
-        self.log_nl(self.game.board_to_string())
-    
-    def write_winner(self):
-        self.log_nl(f'{self.game.has_winner()} wins in {self.game.turns_played} turns')
 
 
 ##############################################################################################################
@@ -337,7 +76,7 @@ class Game:
         self.set(Coord(md,md-2),Unit(player=Player.Attacker,type=UnitType.Program))
         self.set(Coord(md-1,md-1),Unit(player=Player.Attacker,type=UnitType.Firewall))
 
-        self.logger = Logger(self)
+        self.logger = logger.Logger(self)
 
 
     def clone(self) -> Game:
@@ -747,50 +486,3 @@ class Game:
         except Exception as error:
             print(f"Broker error: {error}")
         return None
-
-##############################################################################################################
-
-def main():
-    # parse command line arguments
-    parser = argparse.ArgumentParser(
-        prog='ai_wargame',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--max_depth', type=int, help='maximum search depth')
-    parser.add_argument('--max_time', type=float, help='maximum search time')
-    parser.add_argument('--max_turns', type=float, help='maximum number of turns to end the game')
-    parser.add_argument('--game_type', type=str, default="manual", help='game type: auto|attacker|defender|manual')
-    parser.add_argument('--broker', type=str, help='play via a game broker')
-    args = parser.parse_args()
-
-    # parse the game type
-    if args.game_type == "attacker":
-        game_type = GameType.AttackerVsComp
-    elif args.game_type == "defender":
-        game_type = GameType.CompVsDefender
-    elif args.game_type == "manual":
-        game_type = GameType.AttackerVsDefender
-    else:
-        game_type = GameType.CompVsComp
-
-    # set up game options
-    options = Options(game_type=game_type)
-
-    # override class defaults via command line options
-    if args.max_depth is not None:
-        options.max_depth = args.max_depth
-    if args.max_time is not None:
-        options.max_time = args.max_time
-    if args.broker is not None:
-        options.broker = args.broker
-    if args.max_turns is not None:
-        options.max_turns = args.max_turns
-
-    # create a new game
-    game = Game(options=options)
-    game.start()
-
-
-##############################################################################################################
-
-if __name__ == '__main__':
-    main()
