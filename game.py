@@ -1,220 +1,23 @@
 from __future__ import annotations
-import argparse
+import logger
+from enum import Enum
 import copy
 from datetime import datetime
-from enum import Enum
 from dataclasses import dataclass, field
 from time import sleep
 from typing import Tuple, TypeVar, Type, Iterable, ClassVar
 import random
 import requests
+from player import Player
+from coord import CoordPair, Coord
+from unit import Unit, UnitType
+from gameType import GameType
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
 MAX_HEURISTIC_SCORE = 2000000000
 MIN_HEURISTIC_SCORE = -2000000000
 
-class UnitType(Enum):
-    """Every unit type."""
-    AI = 0
-    Tech = 1
-    Virus = 2
-    Program = 3
-    Firewall = 4
-
-class Player(Enum):
-    """The 2 players."""
-    Attacker = 0
-    Defender = 1
-
-    def next(self) -> Player:
-        """The next (other) player."""
-        if self is Player.Attacker:
-            return Player.Defender
-        else:
-            return Player.Attacker
-
-class GameType(Enum):
-    AttackerVsDefender = 0
-    AttackerVsComp = 1
-    CompVsDefender = 2
-    CompVsComp = 3
-
-##############################################################################################################
-
-@dataclass(slots=True)
-class Unit:
-    player: Player = Player.Attacker
-    type: UnitType = UnitType.Program
-    health : int = 9
-    # class variable: damage table for units (based on the unit type constants in order)
-    damage_table : ClassVar[list[list[int]]] = [
-        [3,3,3,3,1], # AI
-        [1,1,6,1,1], # Tech
-        [9,6,1,6,1], # Virus
-        [3,3,3,3,1], # Program
-        [1,1,1,1,1], # Firewall
-    ]
-    # class variable: repair table for units (based on the unit type constants in order)
-    repair_table : ClassVar[list[list[int]]] = [
-        [0,1,1,0,0], # AI
-        [3,0,0,3,3], # Tech
-        [0,0,0,0,0], # Virus
-        [0,0,0,0,0], # Program
-        [0,0,0,0,0], # Firewall
-    ]
-
-    def is_alive(self) -> bool:
-        """Are we alive ?"""
-        return self.health > 0
-
-    def mod_health(self, health_delta : int):
-        """Modify this unit's health by delta amount."""
-        self.health += health_delta
-        if self.health < 0:
-            self.health = 0
-        elif self.health > 9:
-            self.health = 9
-
-    def to_string(self) -> str:
-        """Text representation of this unit."""
-        p = self.player.name.lower()[0]
-        t = self.type.name.upper()[0]
-        return f"{p}{t}{self.health}"
-    
-    def __str__(self) -> str:
-        """Text representation of this unit."""
-        return self.to_string()
-    
-    def damage_amount(self, target: Unit) -> int:
-        """How much can this unit damage another unit."""
-        amount = self.damage_table[self.type.value][target.type.value]
-        if target.health - amount < 0:
-            return target.health
-        return amount
-
-    def repair_amount(self, target: Unit) -> int:
-        """How much can this unit repair another unit."""
-        amount = self.repair_table[self.type.value][target.type.value]
-        if target.health + amount > 9:
-            return 9 - target.health
-        return amount
-
-##############################################################################################################
-
-@dataclass(slots=True)
-class Coord:
-    """Representation of a game cell coordinate (row, col)."""
-    row : int = 0
-    col : int = 0
-
-    def col_string(self) -> str:
-        """Text representation of this Coord's column."""
-        coord_char = '?'
-        if self.col < 16:
-                coord_char = "0123456789abcdef"[self.col]
-        return str(coord_char)
-
-    def row_string(self) -> str:
-        """Text representation of this Coord's row."""
-        coord_char = '?'
-        if self.row < 26:
-                coord_char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[self.row]
-        return str(coord_char)
-
-    def to_string(self) -> str:
-        """Text representation of this Coord."""
-        return self.row_string()+self.col_string()
-    
-    def __str__(self) -> str:
-        """Text representation of this Coord."""
-        return self.to_string()
-    
-    def clone(self) -> Coord:
-        """Clone a Coord."""
-        return copy.copy(self)
-
-    def iter_range(self, dist: int) -> Iterable[Coord]:
-        """Iterates over Coords inside a rectangle centered on our Coord."""
-        for row in range(self.row-dist,self.row+1+dist):
-            for col in range(self.col-dist,self.col+1+dist):
-                yield Coord(row,col)
-
-    def iter_adjacent(self) -> Iterable[Coord]:
-        """Iterates over adjacent Coords."""
-        yield Coord(self.row-1,self.col)
-        yield Coord(self.row,self.col-1)
-        yield Coord(self.row+1,self.col)
-        yield Coord(self.row,self.col+1)
-
-    @classmethod
-    def from_string(cls, s : str) -> Coord | None:
-        """Create a Coord from a string. ex: D2."""
-        s = s.strip()
-        for sep in " ,.:;-_":
-                s = s.replace(sep, "")
-        if (len(s) == 2):
-            coord = Coord()
-            coord.row = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".find(s[0:1].upper())
-            coord.col = "0123456789abcdef".find(s[1:2].lower())
-            return coord
-        else:
-            return None
-
-##############################################################################################################
-
-@dataclass(slots=True)
-class CoordPair:
-    """Representation of a game move or a rectangular area via 2 Coords."""
-    src : Coord = field(default_factory=Coord)
-    dst : Coord = field(default_factory=Coord)
-
-    def to_string(self) -> str:
-        """Text representation of a CoordPair."""
-        return self.src.to_string()+" "+self.dst.to_string()
-    
-    def __str__(self) -> str:
-        """Text representation of a CoordPair."""
-        return self.to_string()
-
-    def clone(self) -> CoordPair:
-        """Clones a CoordPair."""
-        return copy.copy(self)
-
-    def iter_rectangle(self) -> Iterable[Coord]:
-        """Iterates over cells of a rectangular area."""
-        for row in range(self.src.row,self.dst.row+1):
-            for col in range(self.src.col,self.dst.col+1):
-                yield Coord(row,col)
-
-    @classmethod
-    def from_quad(cls, row0: int, col0: int, row1: int, col1: int) -> CoordPair:
-        """Create a CoordPair from 4 integers."""
-        return CoordPair(Coord(row0,col0),Coord(row1,col1))
-    
-    @classmethod
-    def from_dim(cls, dim: int) -> CoordPair:
-        """Create a CoordPair based on a dim-sized rectangle."""
-        return CoordPair(Coord(0,0),Coord(dim-1,dim-1))
-    
-    @classmethod
-    def from_string(cls, s : str) -> CoordPair | None:
-        """Create a CoordPair from a string. ex: A3 B2"""
-        s = s.strip()
-        for sep in " ,.:;-_":
-                s = s.replace(sep, "")
-        if (len(s) == 4):
-            coords = CoordPair()
-            coords.src.row = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".find(s[0:1].upper())
-            coords.src.col = "0123456789abcdef".find(s[1:2].lower())
-            coords.dst.row = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".find(s[2:3].upper())
-            coords.dst.col = "0123456789abcdef".find(s[3:4].lower())
-            return coords
-        else:
-            return None
-
-##############################################################################################################
-
-@dataclass(slots=True)
+@dataclass()
 class Options:
     """Representation of the game options."""
     dim: int = 5
@@ -229,15 +32,16 @@ class Options:
 
 ##############################################################################################################
 
-@dataclass(slots=True)
+@dataclass()
 class Stats:
     """Representation of the global game statistics."""
     evaluations_per_depth : dict[int,int] = field(default_factory=dict)
     total_seconds: float = 0.0
 
+
 ##############################################################################################################
 
-@dataclass(slots=True)
+@dataclass()
 class Game:
     """Representation of the game state."""
     board: list[list[Unit | None]] = field(default_factory=list)
@@ -266,6 +70,9 @@ class Game:
         self.set(Coord(md,md-2),Unit(player=Player.Attacker,type=UnitType.Program))
         self.set(Coord(md-1,md-1),Unit(player=Player.Attacker,type=UnitType.Firewall))
 
+        self.logger = logger.Logger(self)
+
+
     def clone(self) -> Game:
         """Make a new copy of a game for minimax recursion.
 
@@ -274,7 +81,32 @@ class Game:
         new = copy.copy(self)
         new.board = copy.deepcopy(self.board)
         return new
-
+    
+    def start(self):
+            # the main game loop
+        while True:
+            print()
+            print(self)
+            winner = self.has_winner()
+            if winner is not None:
+                print(f"{winner.name} wins!")
+                self.logger.write_winner()
+                break
+            if self.options.game_type == GameType.AttackerVsDefender:
+                self.human_turn()
+            elif self.options.game_type == GameType.AttackerVsComp and self.next_player == Player.Attacker:
+                self.human_turn()
+            elif self.options.game_type == GameType.CompVsDefender and self.next_player == Player.Defender:
+                self.human_turn()
+            else:
+                player = self.next_player
+                move = self.computer_turn()
+                if move is not None:
+                    self.post_move_to_broker(move)
+                else:
+                    print("Computer doesn't know what to do!!!")
+                    exit(1)
+    
     def is_empty(self, coord : Coord) -> bool:
         """Check if contents of a board cell of the game at Coord is empty (must be valid coord)."""
         return self.board[coord.row][coord.col] is None
@@ -310,22 +142,136 @@ class Game:
             self.remove_dead(coord)
 
     def is_valid_move(self, coords : CoordPair) -> bool:
-        """Validate a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Check that coords are within board dimensions"""
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
+
+        """Check that source coords are not empty and unit belongs to current player"""
         unit = self.get(coords.src)
         if unit is None or unit.player != self.next_player:
             return False
-        unit = self.get(coords.dst)
-        return (unit is None)
+
+        # Begin Tristan code
+        """Check that destination cell is source (self-destruct), up, right, down or left"""
+        if coords.dst != coords.src and coords.dst not in coords.src.iter_adjacent():
+            return False
+
+        """If destination coords is empty, this is a move action"""
+        # if self.get(coords.dst) is None:
+        #     """If unit is an AI, Firewall or Program, it cannot move while engaged"""
+        #     if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+        #         neighborhood = coords.src.iter_adjacent()
+        #         """Check if unit is egnaged"""
+        #         for n in neighborhood:
+        #             n_unit = self.get(n)
+        #             if n_unit is not None and n_unit.player != self.next_player:
+        #                 print("This unit cannot move while engaged")
+        #                 return False
+        #End Tristan code
+
+        return True
 
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
-        """Validate and perform a move expressed as a CoordPair. TODO: WRITE MISSING CODE!!!"""
+        """Validate and perform a move expressed as a CoordPair"""
+        unit = self.get(coords.src)
         if self.is_valid_move(coords):
-            self.set(coords.dst,self.get(coords.src))
-            self.set(coords.src,None)
-            return (True,"")
-        return (False,"invalid move")
+            self.logger.log_action(coords)
+            """If destination is empty, this is a move action"""
+            if self.get(coords.dst) is None:
+                """Check whether unit can move while engaged"""
+                unit = self.get(coords.src)
+                if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+                    """If not, check whether engaged"""
+                    neighborhood = coords.src.iter_adjacent()
+                    for n in neighborhood:
+                        n_unit = self.get(n)
+                        if n_unit is not None and n_unit.player != self.next_player:
+                            return (False, "This unit cannot move while engaged")
+
+                # Check if unit is AI, Firewall or tech; their movement is restricted
+                if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
+                    if unit.player == Player.Attacker:
+                        if coords.dst.row == coords.src.row and coords.dst.col == coords.src.col + 1:
+                            return (False, "This unit can't move right")
+                        elif coords.dst.row == coords.src.row + 1 and coords.dst.col == coords.src.col:
+                            return (False, "This unit can't move down")
+                    else:
+                        if coords.dst.row == coords.src.row and coords.dst.col == coords.src.col - 1:
+                            return (False, "This unit can't move left")
+                        elif coords.dst.row == coords.src.row - 1 and coords.dst.col == coords.src.col:
+                            return (False, "This unit can't move up")
+
+
+                self.set(coords.dst,self.get(coords.src))
+                self.set(coords.src,None)
+
+                return (True, f"Moved {unit.type.name} unit from {coords.src} to {coords.dst}")
+
+            else:
+                # TODO: implement attack/repair/self-destruct logic here
+                src_unit = self.get(coords.src)
+                target_unit = self.get(coords.dst)
+
+                """Self-destruct mode"""
+                """Check if the target is same as the source """
+                if src_unit == target_unit:
+                    src_unit.health = 0
+                    self.remove_dead(coords.src)
+                    neighborhood = coords.src.iter_range(1)
+                    total_damage = 0
+                    for n in neighborhood:
+                        n_unit = self.get(n)
+                        if n_unit is not None:
+                            n_unit.mod_health(-2)
+                            total_damage += 2
+                            if n_unit is not n_unit.is_alive():
+                                self.remove_dead(n)
+                    return True, f"{unit.type.name} Self-destructed at {coords.src} for {total_damage} total damage"
+
+                """Repair-mode"""
+                """Check if the target unit is friendly"""
+                if src_unit.player.name == target_unit.player.name:
+                    total_repair = 0
+                    if src_unit.type in [UnitType.AI, UnitType.Tech]:
+                        """Check the repair move if valid, throw error if the target unit health is above 9"""
+                        if target_unit.health != 9:
+                            amt = src_unit.repair_amount(target_unit)
+                            if src_unit.type in [UnitType.AI] and target_unit.type in [UnitType.Virus, UnitType.Tech]:
+                                target_unit.mod_health(amt)
+                                total_repair += amt
+                            elif src_unit.type in [UnitType.Tech] and target_unit.type in [UnitType.Firewall,
+                                                                                           UnitType.AI,
+                                                                                           UnitType.Program]:
+                                target_unit.mod_health(amt)
+                                total_repair += amt
+                            else:
+                                return False, f"Invalid move! {target_unit.type.name} can not be repaired by {src_unit.type}"
+                        else:
+                            return False, "Invalid move! Can not be repaired when health is full"
+                    else:
+                        return False, f"Invalid move! {src_unit.type.name} can not repair"
+
+                    return True, (f"{src_unit.type.name} Repaired from {coords.src} to {coords.dst} repaired {total_repair}"
+                                  f" health points")
+
+                else:
+                    """Attack mode"""
+                    trgt_damage_amt = src_unit.damage_amount(target_unit)
+                    src_damage_amt = target_unit.damage_amount(src_unit)
+
+                    src_unit.mod_health(-src_damage_amt)
+                    target_unit.mod_health(-trgt_damage_amt)
+                    if src_unit is not src_unit.is_alive():
+                        self.remove_dead(coords.src)
+
+                    if target_unit is not target_unit.is_alive():
+                        self.remove_dead(coords.dst)
+
+                    return True, (f"{unit.type.name} Attacked from {coords.src} to {coords.dst} \n"
+                                  f"Combat Damage: to source = {src_damage_amt}, to target = {trgt_damage_amt} ")
+
+        else:
+            return False,"Invalid move!"
 
     def next_turn(self):
         """Transitions game to the next turn."""
@@ -334,12 +280,15 @@ class Game:
 
     def to_string(self) -> str:
         """Pretty text representation of the game."""
-        dim = self.options.dim
         output = ""
         output += f"Next player: {self.next_player.name}\n"
         output += f"Turns played: {self.turns_played}\n"
+        return output + self.board_to_string()
+    
+    def board_to_string(self) -> str:
+        dim = self.options.dim
         coord = Coord()
-        output += "\n   "
+        output = "\n   "
         for col in range(dim):
             coord.col = col
             label = coord.col_string()
@@ -404,13 +353,17 @@ class Game:
                     self.next_turn()
                     break
                 else:
-                    print("The move is not valid! Try again.")
+                    if result is not None and result != "":
+                        print(result)
+                    else:
+                        print("The move is not valid! Try again.")
 
     def computer_turn(self) -> CoordPair | None:
         """Computer plays a move."""
         mv = self.suggest_move()
         if mv is not None:
             (success,result) = self.perform_move(mv)
+            #TODO Log additional information (3.1 and 3.2)
             if success:
                 print(f"Computer {self.next_player.name}: ",end='')
                 print(result)
@@ -527,68 +480,3 @@ class Game:
         except Exception as error:
             print(f"Broker error: {error}")
         return None
-
-##############################################################################################################
-
-def main():
-    # parse command line arguments
-    parser = argparse.ArgumentParser(
-        prog='ai_wargame',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--max_depth', type=int, help='maximum search depth')
-    parser.add_argument('--max_time', type=float, help='maximum search time')
-    parser.add_argument('--game_type', type=str, default="manual", help='game type: auto|attacker|defender|manual')
-    parser.add_argument('--broker', type=str, help='play via a game broker')
-    args = parser.parse_args()
-
-    # parse the game type
-    if args.game_type == "attacker":
-        game_type = GameType.AttackerVsComp
-    elif args.game_type == "defender":
-        game_type = GameType.CompVsDefender
-    elif args.game_type == "manual":
-        game_type = GameType.AttackerVsDefender
-    else:
-        game_type = GameType.CompVsComp
-
-    # set up game options
-    options = Options(game_type=game_type)
-
-    # override class defaults via command line options
-    if args.max_depth is not None:
-        options.max_depth = args.max_depth
-    if args.max_time is not None:
-        options.max_time = args.max_time
-    if args.broker is not None:
-        options.broker = args.broker
-
-    # create a new game
-    game = Game(options=options)
-
-    # the main game loop
-    while True:
-        print()
-        print(game)
-        winner = game.has_winner()
-        if winner is not None:
-            print(f"{winner.name} wins!")
-            break
-        if game.options.game_type == GameType.AttackerVsDefender:
-            game.human_turn()
-        elif game.options.game_type == GameType.AttackerVsComp and game.next_player == Player.Attacker:
-            game.human_turn()
-        elif game.options.game_type == GameType.CompVsDefender and game.next_player == Player.Defender:
-            game.human_turn()
-        else:
-            player = game.next_player
-            move = game.computer_turn()
-            if move is not None:
-                game.post_move_to_broker(move)
-            else:
-                print("Computer doesn't know what to do!!!")
-                exit(1)
-
-##############################################################################################################
-
-if __name__ == '__main__':
-    main()
