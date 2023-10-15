@@ -1,14 +1,13 @@
 from io import TextIOWrapper
-import game as GameModule
 from coord import CoordPair
 from player import Player
+from gameType import GameType
 
 
 class Logger:
     output_file: TextIOWrapper
-    game: GameModule.Game
 
-    def __init__(self, game: GameModule.Game):
+    def __init__(self, game):
         self.game = game
         self.setup_output_file()
         self.log_game_parameters()
@@ -35,13 +34,13 @@ class Logger:
             self.log_nl(f' (alpha-beta={is_alpha_beta})')
             
         #TODO Real heuristic values
-        if options.game_type == GameModule.GameType.AttackerVsComp or options.game_type == GameModule.GameType.AttackerVsDefender:
+        if options.game_type == GameType.AttackerVsComp or options.game_type == GameType.AttackerVsDefender:
             self.log_nl("Player 1 is a Human")
         else:
             heuristic = "e0"
             self.log_nl(f'Player 1 is an AI with heuristic {heuristic}')
 
-        if options.game_type == GameModule.GameType.AttackerVsDefender or options.game_type == GameModule.GameType.CompVsDefender:
+        if options.game_type == GameType.AttackerVsDefender or options.game_type == GameType.CompVsDefender:
             self.log_nl("Player 2 is a Human")
         else:
             heuristic = "e0"
