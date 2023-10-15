@@ -11,17 +11,11 @@ import requests
 from player import Player
 from coord import CoordPair, Coord
 from unit import Unit, UnitType
+from gameType import GameType
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
 MAX_HEURISTIC_SCORE = 2000000000
 MIN_HEURISTIC_SCORE = -2000000000
-
-class GameType(Enum):
-    AttackerVsDefender = 0
-    AttackerVsComp = 1
-    CompVsDefender = 2
-    CompVsComp = 3
-
 
 @dataclass()
 class Options:
