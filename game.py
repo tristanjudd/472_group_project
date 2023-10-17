@@ -496,6 +496,59 @@ class Game:
 
         return h_val
 
+    def e1(self, player1: Player) -> int:
+        """Heuristic function from handout"""
+        h_val = 0
+
+        for _, unit in self.player_units(player1):
+
+            u_type = unit.type
+            u_health = unit.health
+
+            if u_type == UnitType.AI:
+                h_val += 9999 * u_health
+            else:
+                h_val += 3 * u_health
+
+        for _, unit in self.player_units(player1.next()):
+            u_type = unit.type
+            u_health = unit.health
+
+            if u_type == UnitType.AI:
+                h_val -= 9999 * u_health
+            else:
+                h_val -= 3 * u_health
+
+        return h_val
+
+    def e2(self, player1: Player) -> int:
+        """Heuristic function from handout"""
+        h_val = 0
+
+        for _, unit in self.player_units(player1):
+
+            u_type = unit.type
+
+            if u_type == UnitType.AI:
+                h_val += 9999
+            elif u_type in [UnitType.Virus, UnitType.Tech, UnitType.Program]:
+                h_val += 9
+            else:
+                h_val += 3
+
+        for _, unit in self.player_units(player1.next()):
+            u_type = unit.type
+            u_health = unit.health
+
+            if u_type == UnitType.AI:
+                h_val -= 9999
+            elif u_type in [UnitType.Virus, UnitType.Tech, UnitType.Program]:
+                h_val -= 9
+            else:
+                h_val -= 3
+
+        return h_val
+
     def random_move(self) -> Tuple[int, CoordPair | None, float]:
         """Returns a random move."""
         move_candidates = list(self.move_candidates())
