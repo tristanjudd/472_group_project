@@ -2,7 +2,6 @@ from __future__ import annotations
 import argparse
 from game import Game, GameType, Options
 
-
 def main():
     # parse command line arguments
     parser = argparse.ArgumentParser(
