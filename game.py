@@ -80,6 +80,10 @@ class Game:
         """
         new = copy.copy(self)
         new.board = copy.deepcopy(self.board)
+
+        # Tristan added this line
+        new.next_player = copy.deepcopy(self.next_player)
+
         return new
     
     def start(self):
@@ -345,10 +349,8 @@ class Game:
                 sleep(0.1)
         else:
             # SHORTCUT
-            # clone game
-            simulation = self.clone()
             # minimax returns the best move
-            best_move = self.minimax_helper(self.move_candidates(), simulation)
+            best_move = self.minimax_helper()
             print(f"best move: {best_move}")
 
             # END SHORTCUT
@@ -414,66 +416,80 @@ class Game:
             move.dst = src
             yield move.clone()
 
-    class Node:
-        def __init__(self, state_board=None, parent=None, children=None, move=None, h_score=0):
-            self.board = state_board
-            self.parent = parent
-            self.children = children
-            self.move = move
-            self.h_score = h_score
-
-    def minimax_helper(self, moves: Iterable[CoordPair], game_clone: Game) -> CoordPair:
+    def minimax_helper(self) -> CoordPair:
+        # clone game
+        game_clone = self.clone()
+        # starting depth
         depth = 0
-        k = 10
+        # k for testing purposes, will be parameterized later
+        k = 14
 
-        max_move = self.Node(h_score=-100)
+        max_move = None, None
 
-        for move in moves:
-            state_board = copy.deepcopy(self.board)
-            state_node = self.Node(move=move, state_board=state_board)
-            node = self.recursive_minimax(depth=depth+1, k=k, state_node=state_node, game_clone=game_clone)
-            if node.h_score > max_move.h_score:
-                max_move = node
+        # perform recursive minimax on all possible moves on given moves
+        for move in self.move_candidates():
+            # call recursive minimax on all subsequent moves of this move
+            h_val, move = self.minmax(depth=depth+1, k=k, game_clone=game_clone, move=move,
+                                      board=copy.deepcopy(self.board))
+            # take max heuristic value and set node to it
 
-        return max_move.move
+            if h_val is None:
+                continue
+            elif max_move[0] is None:
+                max_move = h_val, move
+            elif h_val > max_move[0]:
+                max_move = h_val, move
 
-    def recursive_minimax(self, depth: int, k: int, state_node: Node, game_clone: Game) -> Node:
-        # if we are at max depth, return the heuristic value
-        if depth >= k:
-            state_node.h_score = self.e0(game_clone.next_player)
-            return state_node
+        return max_move[1]
 
-        # otherwise simulate all possible moves from this state
+    def minmax(self, depth: int, k: int, game_clone: Game, move: CoordPair, board: list[list[Unit | None]]) \
+            -> (int, CoordPair) or (None, None):
+        # reset game board to correct state
+        game_clone.board = board
+        # store current player
+        current_player = copy.deepcopy(game_clone.next_player)
+        # store current turns
+        current_turns = game_clone.turns_played
 
-        for child in game_clone.move_candidates():
-            is_valid, _ = game_clone.perform_move(child)
+        # check if move is valid
+        is_valid, msg = game_clone.perform_move(move)
+        # if not, dead branch
+        if not is_valid:
+            return None, None
 
-            if is_valid:
-                # if move is valid, store the board after it was performed
-                new_board = copy.deepcopy(game_clone.board)
-                # and create new state space node pointing to parent, storing the move and new board
-                new_state_node = self.Node(parent=state_node, move=child, state_board=new_board)
+        print('valid move')
 
-                if game_clone.has_winner():
-                    #TODO: handle win condition
-                    continue
+        # and store copy of board
+        next_board = copy.deepcopy(game_clone.board)
 
-                # after current player has made a move it is next player's turn
-                game_clone.next_turn()
-                # we make a recursive minimax call on the new node
-                h = self.recursive_minimax(depth=depth+1, k=k, state_node=new_state_node, game_clone=game_clone)
-                # update value of state_node depending on whose turn it is
-                if game_clone.next_player == self.next_player and h.h_score > state_node.h_score:
-                    state_node.h_score = h.h_score
-                elif game_clone.next_player != self.next_player and h.h_score < state_node.h_score:
-                    state_node.h_score = h.h_score
+        # if we've reached max depth or game is over, return heuristic value
+        if depth == k or game_clone.has_winner():
+            h = game_clone.e_0(self.next_player)
+            return h, move
 
-            # after done with this child, I reset for the next one to start at the same state
-            game_clone.board = state_node.board
+        # if not max depth and no winner run recursive call on all possible moves
+        best_move = None
 
-        return state_node
+        for coords in game_clone.move_candidates():
+            print('inside minmax for coords')
+            # set player to next
+            game_clone.next_player = current_player.next()
+            # get heuristic value of move
+            h_val, _ = self.minmax(depth=depth+1, k=k, game_clone=game_clone, move=coords,
+                                      board=copy.deepcopy(next_board))
 
-    def e0(self, player1: Player) -> int:
+            if h_val is None:
+                continue
+            elif best_move is None:
+                best_move = h_val
+            elif self.next_player == current_player and h_val > best_move:
+                best_move = h_val
+            elif self.next_player != current_player and h_val < best_move:
+                best_move = h_val
+
+        return best_move, move
+
+    def e_0(self, player1: Player) -> int:
         """Heuristic function from handout"""
         h_val = 0
 
@@ -496,11 +512,11 @@ class Game:
 
         return h_val
 
-    def e1(self, player1: Player) -> int:
+    def e_1(self) -> int:
         """Heuristic function from handout"""
         h_val = 0
 
-        for _, unit in self.player_units(player1):
+        for _, unit in self.player_units(self.next_player):
 
             u_type = unit.type
             u_health = unit.health
@@ -510,7 +526,7 @@ class Game:
             else:
                 h_val += 3 * u_health
 
-        for _, unit in self.player_units(player1.next()):
+        for _, unit in self.player_units(self.next_player.next()):
             u_type = unit.type
             u_health = unit.health
 
@@ -521,11 +537,11 @@ class Game:
 
         return h_val
 
-    def e2(self, player1: Player) -> int:
+    def e_2(self) -> int:
         """Heuristic function from handout"""
         h_val = 0
 
-        for _, unit in self.player_units(player1):
+        for _, unit in self.player_units(self.next_player):
 
             u_type = unit.type
 
@@ -536,7 +552,7 @@ class Game:
             else:
                 h_val += 3
 
-        for _, unit in self.player_units(player1.next()):
+        for _, unit in self.player_units(self.next_player.next()):
             u_type = unit.type
             u_health = unit.health
 
