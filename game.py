@@ -449,13 +449,8 @@ class Game:
         # store current turns
         current_turns = game_clone.turns_played
 
-        # check if move is valid
-        is_valid, msg = game_clone.perform_move(move)
-        # if not, dead branch
-        if not is_valid:
-            return None, None
-
-        print('valid move')
+        # perform current move
+        _, msg = game_clone.perform_move(move)
 
         # and store copy of board
         next_board = copy.deepcopy(game_clone.board)
