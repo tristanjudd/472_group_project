@@ -1,3 +1,4 @@
 gameTrace*.txt
 .idea/
 __pycache__/
+*.pyc 
