@@ -145,7 +145,7 @@ class Game:
             target.mod_health(health_delta)
             self.remove_dead(coord)
 
-    def is_valid_move(self, coords : CoordPair) -> bool:
+    def is_moveable(self, coords : CoordPair) -> bool:
         """Check that coords are within board dimensions"""
         if not self.is_valid_coord(coords.src) or not self.is_valid_coord(coords.dst):
             return False
@@ -178,7 +178,7 @@ class Game:
     def perform_move(self, coords : CoordPair) -> Tuple[bool,str]:
         """Validate and perform a move expressed as a CoordPair"""
         unit = self.get(coords.src)
-        if self.is_valid_move(coords):
+        if self.is_moveable(coords):
             self.logger.log_action(coords)
             """If destination is empty, this is a move action"""
             if self.get(coords.dst) is None:
@@ -411,7 +411,7 @@ class Game:
             move.src = src
             for dst in src.iter_adjacent():
                 move.dst = dst
-                if self.is_valid_move(move):
+                if self.is_moveable(move):
                     yield move.clone()
             move.dst = src
             yield move.clone()
