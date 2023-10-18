@@ -1,56 +1,72 @@
 from __future__ import annotations
-from player import Player
-from dataclasses import field
-from unit import Unit
 from game import CoordPair
-from typing import Iterable, Tuple
 from collections.abc import Callable
+from board import Board
+from player import Player
+from unit import UnitType
+import sys
+
 
 ##############################################################################################################
 
 # Heuristics
 def e0(board: Board) -> int:
-  grid = board.grid
-  heuristic = 0
+  h_val = 0
+  
+  for _, unit in board.player_units(Player.get_max_player()):
+      if unit.type == UnitType.AI:
+          h_val += 9999
+      else:
+          h_val += 3
 
-  # TODO: iterate on the units in the grid and add or substract depending on the heuristic
+  for _, unit in board.player_units(Player.get_min_player()):
+      if unit.type == UnitType.AI:
+          h_val -= 9999
+      else:
+          h_val -= 3
 
-  return heuristic
+  return h_val
 
 ##############################################################################################################
 
-class Board:
-  grid: list[list[Unit | None]] = field(default_factory=list)
 
-  def move_candidates(self) -> Iterable[CoordPair]: 
-    return []
-  
-  def clone_and_move(self, move: CoordPair) -> Board:
-    # TODO: clone current board and perform the given move on that board
-    return None 
 
 def suggest_move():
   return
 
+def better_move(is_max: bool, original_score: int, new_score: int) -> bool:
+  if is_max:
+    return new_score > original_score
+  else:
+    return new_score < original_score
 
-def minimax(board: Board, is_max: bool, move: CoordPair, e: Callable[[Board], int], depth: int, MAX_DEPTH: int) -> Tuple[int, CoordPair | None, float]:
+
+
+def minimax(board: Board, is_max: bool, move: CoordPair, e: Callable[[Board], int], depth: int, MAX_DEPTH: int) -> int:
   if depth == MAX_DEPTH:
-    return (e(board), move, depth)
-  
-  total_depth = depth
+    return e(board)
 
-  # best move is a tuple/pair with:
-  # (score, move)
-  best_move = None
-  moves = board.move_candidates()
-  for c_move in moves:
-    c_board = board.clone_and_move(move)
-    (c_score, c_depth) = minimax(c_board, not is_max, c_move, e, depth + 1, MAX_DEPTH)
-    
-    # sum the depth of the children to eventually calculate avg depth (we might need to also keep track of the count. creating a separate observer object might be more useful)
-    total_depth += c_depth
-    
-    # Code that compares this move's score with the previous best_move, taking into account if is_max is true or not
+  # score
+  best_score = None
   
-  return (best_move[0], best_move[1], total_depth)
+  current_player = Player.get_max_player() if is_max else Player.get_min_player()
+
+  for c_move in board.move_candidates(current_player):
+    c_board = board.clone_and_move(c_move, current_player)
+
+    if c_board is None:
+      continue
+    
+    c_score = minimax(c_board, not is_max, c_move, e, depth + 1, MAX_DEPTH)
+
+    if c_score is None:
+       print(c_board.to_string())
+
+    if best_score is None or better_move(is_max, best_score, c_score):
+      best_score = c_score
+  
+  if best_score is None:
+     return sys.maxsize if is_max else -1 * sys.maxsize
+  else:
+    return best_score
 
