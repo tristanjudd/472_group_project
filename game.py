@@ -435,9 +435,7 @@ class Game:
 
             if h_val is None:
                 continue
-            elif max_move[0] is None:
-                max_move = h_val, move
-            elif h_val > max_move[0]:
+            elif max_move[0] is None or h_val > max_move[0]:
                 max_move = h_val, move
 
         return max_move[1]
