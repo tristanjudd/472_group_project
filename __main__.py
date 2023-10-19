@@ -3,13 +3,14 @@ import argparse
 from game import Game, GameType, Options
 
 def main():
+    default_options = Options()
     # parse command line arguments
     parser = argparse.ArgumentParser(
         prog='ai_wargame',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--max_depth', type=int, help='maximum search depth')
-    parser.add_argument('--max_time', type=float, help='maximum search time')
-    parser.add_argument('--max_turns', type=float, help='maximum number of turns to end the game')
+    parser.add_argument('--max_depth', type=int, default=default_options.max_depth, help='maximum search depth')
+    parser.add_argument('--max_time', type=float, default=default_options.max_time, help='maximum search time')
+    parser.add_argument('--max_turns', type=float, default=default_options.max_turns, help='maximum number of turns to end the game')
     parser.add_argument('--game_type', type=str, default="manual", help='game type: auto|attacker|defender|manual')
     parser.add_argument('--broker', type=str, help='play via a game broker')
     args = parser.parse_args()
