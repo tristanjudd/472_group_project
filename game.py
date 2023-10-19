@@ -148,7 +148,7 @@ class Game:
             else:
                 print('Invalid coordinates! Try again.')
 
-    def get_move_from_minimax(self) -> CoordPair:
+    def get_move_from_minimax(self) -> (int, CoordPair, float):
         # Keep track of all the best-scoring moves
         best_score = None
         best_moves = []
@@ -175,9 +175,13 @@ class Game:
             elif best_score == score:
                 best_moves.append(move)
 
-        return self.pick_best_move(best_moves, best_score)
+        picked_move = self.pick_best_move(best_moves, best_score)
+        # TODO: Track and calculate average depth
+        avg_depth = 0.0
+
+        return (best_score, picked_move, avg_depth)
     
-    def get_move_from_alpha_beta_minimax(self) -> CoordPair:
+    def get_move_from_alpha_beta_minimax(self) -> (int, CoordPair, float):
         # Keep track of all the best-scoring moves
         best_score = None
         best_moves = []
@@ -204,7 +208,11 @@ class Game:
             elif best_score == score:
                 best_moves.append(move)
 
-        return self.pick_best_move(best_moves, best_score)
+        picked_move = self.pick_best_move(best_moves, best_score)
+        # TODO: Track and calculate average depth
+        avg_depth = 0.0
+
+        return (best_score, picked_move, avg_depth)
     
     def pick_best_move(self, best_moves: list[CoordPair], best_score: int):
         print("best moves with score", best_score, "are:", ', '.join(str(m) for m in best_moves))
@@ -227,17 +235,6 @@ class Game:
                         break
                 sleep(0.1)
         else:
-            # SHORTCUT
-            # minimax returns the best move
-            best_move = self.get_move_from_alpha_beta_minimax()
-            print(f"best move: {best_move}")
-            print(self.board_to_string())
-
-            best_move = self.get_move_from_minimax()
-            print(f"best move: {best_move}")
-            print(self.board_to_string())
-
-            # END SHORTCUT
 
             while True:
                 mv = self.read_move()
@@ -294,16 +291,19 @@ class Game:
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move, avg_depth) = self.random_move()
+        (score, move, avg_depth) = self.get_move_from_alpha_beta_minimax() if self.options.alpha_beta else self.get_move_from_minimax()
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
+
         print(f"Heuristic score: {score}")
         print(f"Average recursive depth: {avg_depth:0.1f}")
         print(f"Evals per depth: ",end='')
+
         for k in sorted(self.stats.evaluations_per_depth.keys()):
             print(f"{k}:{self.stats.evaluations_per_depth[k]} ",end='')
         print()
         total_evals = sum(self.stats.evaluations_per_depth.values())
+
         if self.stats.total_seconds > 0:
             print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
         print(f"Elapsed time: {elapsed_seconds:0.1f}s")
