@@ -149,31 +149,64 @@ class Game:
                 print('Invalid coordinates! Try again.')
 
     def get_move_from_minimax(self) -> CoordPair:
-        # (score, move)
+        # Keep track of all the best-scoring moves
         best_score = None
         best_moves = []
+
         current_player = self.next_player
         current_player_is_max = Player.is_max(current_player)
+        start_depth = 1
 
         for move in self.board.move_candidates(current_player):
             moved_board = self.board.clone_and_move(move, current_player)
 
+            # Move could not be performed
             if moved_board is None:
                 continue
             
-            score = algorithms.minimax(moved_board, not current_player_is_max, move, algorithms.e0, 1, self.options.max_depth)
+            score = algorithms.minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth)
 
             print("move", move, "has score", score)
 
-            if best_score is None or algorithms.better_move(current_player_is_max, best_score, score):
+            if algorithms.better_move(current_player_is_max, best_score, score):
                 best_score = score
                 best_moves = []
                 best_moves.append(move)
             elif best_score == score:
                 best_moves.append(move)
 
+        return self.pick_best_move(best_moves, best_score)
+    
+    def get_move_from_alpha_beta_minimax(self) -> CoordPair:
+        # Keep track of all the best-scoring moves
+        best_score = None
+        best_moves = []
+
+        current_player = self.next_player
+        current_player_is_max = Player.is_max(current_player)
+        start_depth = 1
+
+        for move in self.board.move_candidates(current_player):
+            moved_board = self.board.clone_and_move(move, current_player)
+
+            # Move could not be performed
+            if moved_board is None:
+                continue
             
-        
+            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth, MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE)
+
+            print("move", move, "has score", score)
+
+            if algorithms.better_move(current_player_is_max, best_score, score):
+                best_score = score
+                best_moves = []
+                best_moves.append(move)
+            elif best_score == score:
+                best_moves.append(move)
+
+        return self.pick_best_move(best_moves, best_score)
+    
+    def pick_best_move(self, best_moves: list[CoordPair], best_score: int):
         print("best moves with score", best_score, "are:", ', '.join(str(m) for m in best_moves))
         picked_move = random.choice(best_moves)
         print("random move picked out of the best moves is", picked_move)
@@ -196,6 +229,10 @@ class Game:
         else:
             # SHORTCUT
             # minimax returns the best move
+            best_move = self.get_move_from_alpha_beta_minimax()
+            print(f"best move: {best_move}")
+            print(self.board_to_string())
+
             best_move = self.get_move_from_minimax()
             print(f"best move: {best_move}")
             print(self.board_to_string())
