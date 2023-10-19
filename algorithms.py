@@ -10,6 +10,8 @@ import game
 ##############################################################################################################
 
 # Heuristics
+
+#Heuristic function from handout
 def e0(board: Board) -> int:
   h_val = 0
   
@@ -26,6 +28,54 @@ def e0(board: Board) -> int:
           h_val -= 3
 
   return h_val
+
+def e1(board: Board) -> int:
+  h_val = 0
+  
+  for _, unit in board.player_units(Player.get_max_player()):
+      u_health = unit.health
+
+      if unit.type == UnitType.AI:
+          h_val += 9999 * u_health
+      else:
+          h_val += 3 * u_health
+
+  for _, unit in board.player_units(Player.get_min_player()):
+      u_health = unit.health
+
+      if unit.type == UnitType.AI:
+          h_val -= 9999 * u_health
+      else:
+          h_val -= 3 * u_health
+
+  return h_val
+
+def e2(board: Board) -> int:
+  h_val = 0
+  
+  for _, unit in board.player_units(Player.get_max_player()):
+    u_type = unit.type
+
+    if u_type == UnitType.AI:
+        h_val += 9999
+    elif u_type in [UnitType.Virus, UnitType.Tech, UnitType.Program]:
+        h_val += 9
+    else:
+        h_val += 3
+
+  for _, unit in board.player_units(Player.get_min_player()):
+      u_type = unit.type
+      u_health = unit.health
+
+      if u_type == UnitType.AI:
+          h_val -= 9999
+      elif u_type in [UnitType.Virus, UnitType.Tech, UnitType.Program]:
+          h_val -= 9
+      else:
+          h_val -= 3
+
+  return h_val
+
 
 ##############################################################################################################
 
