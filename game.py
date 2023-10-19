@@ -15,6 +15,7 @@ from gameType import GameType
 import board
 import algorithms
 import random
+from stats import Stats, MinimaxStatCollector
 
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
@@ -33,14 +34,6 @@ class Options:
     max_turns : int | None = 100
     randomize_moves : bool = True
     broker : str | None = None
-
-##############################################################################################################
-
-@dataclass()
-class Stats:
-    """Representation of the global game statistics."""
-    evaluations_per_depth : dict[int,int] = field(default_factory=dict)
-    total_seconds: float = 0.0
 
 
 ##############################################################################################################
@@ -147,41 +140,11 @@ class Game:
                 return coords
             else:
                 print('Invalid coordinates! Try again.')
-
-    def get_move_from_minimax(self) -> (int, CoordPair, float):
-        # Keep track of all the best-scoring moves
-        best_score = None
-        best_moves = []
-
-        current_player = self.next_player
-        current_player_is_max = Player.is_max(current_player)
-        start_depth = 1
-
-        for move in self.board.move_candidates(current_player):
-            moved_board = self.board.clone_and_move(move, current_player)
-
-            # Move could not be performed
-            if moved_board is None:
-                continue
-            
-            score = algorithms.minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth)
-
-            print("move", move, "has score", score)
-
-            if algorithms.better_move(current_player_is_max, best_score, score):
-                best_score = score
-                best_moves = []
-                best_moves.append(move)
-            elif best_score == score:
-                best_moves.append(move)
-
-        picked_move = self.pick_best_move(best_moves, best_score)
-        # TODO: Track and calculate average depth
-        avg_depth = 0.0
-
-        return (best_score, picked_move, avg_depth)
     
-    def get_move_from_alpha_beta_minimax(self) -> (int, CoordPair, float):
+    def get_move_from_minimax(self, is_alpha_beta: bool) -> (int, CoordPair, float):
+        # Instanciate the Stat collector
+        stat_collector = MinimaxStatCollector(self.options.max_time)
+
         # Keep track of all the best-scoring moves
         best_score = None
         best_moves = []
@@ -190,6 +153,7 @@ class Game:
         current_player_is_max = Player.is_max(current_player)
         start_depth = 1
 
+
         for move in self.board.move_candidates(current_player):
             moved_board = self.board.clone_and_move(move, current_player)
 
@@ -197,7 +161,7 @@ class Game:
             if moved_board is None:
                 continue
             
-            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth, MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE)
+            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth, MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE, is_alpha_beta)
 
             print("move", move, "has score", score)
 
@@ -291,7 +255,7 @@ class Game:
     def suggest_move(self) -> CoordPair | None:
         """Suggest the next move using minimax alpha beta. TODO: REPLACE RANDOM_MOVE WITH PROPER GAME LOGIC!!!"""
         start_time = datetime.now()
-        (score, move, avg_depth) = self.get_move_from_alpha_beta_minimax() if self.options.alpha_beta else self.get_move_from_minimax()
+        (score, move, avg_depth) = self.get_move_from_minimax(self.options.alpha_beta)
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
 
