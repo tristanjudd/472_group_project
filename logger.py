@@ -2,12 +2,14 @@ from io import TextIOWrapper
 from coord import CoordPair
 from player import Player
 from gameType import GameType
+import game as GameModule
 
 
 class Logger:
     output_file: TextIOWrapper
+    game: GameModule.Game
 
-    def __init__(self, game):
+    def __init__(self, game: GameModule.Game):
         self.game = game
         self.setup_output_file()
         self.log_game_parameters()
@@ -54,8 +56,8 @@ class Logger:
         
         self.output_file = open(f'GameModuleTrace-{is_alpha_beta}-{max_time}-{max_turns}.txt', "w")
 
-    def log_nl(self, str: str = ""):
-        self.output_file.write(f'{str}\n')
+    def log_nl(self, str: str = "", end: str = "\n"):
+        self.output_file.write(f'{str}{end}')
 
     def log_action(self, move: CoordPair):
         self.log_nl()

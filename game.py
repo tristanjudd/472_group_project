@@ -196,6 +196,7 @@ class Game:
                     print(f"Broker {self.next_player.name}: ",end='')
                     print(result)
                     if success:
+                        self.logger.log_action(mv)
                         self.next_turn()
                         break
                 sleep(0.1)
@@ -205,6 +206,7 @@ class Game:
                 mv = self.read_move()
                 (success,result) = self.board.perform_move(mv, self.next_player)
                 if success:
+                    self.logger.log_action(mv)
                     print(f"Player {self.next_player.name}: ",end='')
                     print(result)
                     self.next_turn()
@@ -221,6 +223,7 @@ class Game:
         if mv is not None:
             (success,result) = self.board.perform_move(mv, self.next_player)
             #TODO Log additional information (3.1 and 3.2)
+            # DON'T LOG HERE, LOG IN SUGGEST MOVE
             if success:
                 print(f"Computer {self.next_player.name}: ",end='')
                 print(result)
@@ -259,26 +262,35 @@ class Game:
         start_time = datetime.now()
         (score, move, avg_depth) = self.get_move_from_minimax(self.options.alpha_beta)
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
+
+        self.logger.log_action(move)
+
         self.stats.total_seconds += elapsed_seconds
 
+        self.print_moves(print, score, elapsed_seconds)
+        self.print_moves(self.logger.log_nl, score, elapsed_seconds)
+
+        return move
+    
+    def print_moves(self, print_fn, score: int, elapsed_seconds):
         total_evals = sum(self.stats.evaluations_per_depth.values())
 
-        print(f"Heuristic score: {score}")
-        print(f"Cumulative evals: {algorithms.human_format(total_evals)}")
-        print(f"Cumulative evals per depth: ",end='')
+        print_fn(f"Heuristic score: {score}")
+        print_fn(f"Cumulative evals: {algorithms.human_format(total_evals)}")
+        print_fn(f"Cumulative evals per depth: ",end='')
 
         sorted_depths = list(self.stats.evaluations_per_depth.keys())
         sorted_depths.sort()
 
         for k in sorted_depths:
-            print(f"{k}={algorithms.human_format(self.stats.evaluations_per_depth[k])} ",end='')
-        print()
+            print_fn(f"{k}={algorithms.human_format(self.stats.evaluations_per_depth[k])} ",end='')
+        print_fn()
 
-        print(f"Cumulative % evals per depth: ",end='')
+        print_fn(f"Cumulative % evals per depth: ",end='')
         for k in sorted_depths:
             percent = 100 * float(self.stats.evaluations_per_depth[k])/total_evals
-            print(f"{k}={percent:.2f}% ",end='')
-        print()
+            print_fn(f"{k}={percent:.2f}% ",end='')
+        print_fn()
 
         # Calculating average branching factor
         parent_depths = sorted_depths[:-1] 
@@ -286,14 +298,14 @@ class Game:
         branch_depths = sorted_depths[1:] 
         branch_evals = sum([self.stats.evaluations_per_depth[k] for k in branch_depths])
 
-        print(f"Average branching factor: {branch_evals/float(parent_evals):0.1f}")
+        print_fn(f"Average branching factor: {branch_evals/float(parent_evals):0.1f}")
 
 
         if self.stats.total_seconds > 0:
-            print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
-        print(f"Elapsed time: {elapsed_seconds:0.1f}s")
-        print()
-        return move
+            print_fn(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
+        print_fn(f"Elapsed time: {elapsed_seconds:0.1f}s")
+        print_fn()
+        
 
     def post_move_to_broker(self, move: CoordPair):
         """Send a move to the game broker."""
