@@ -20,7 +20,7 @@ def main():
         game_type = GameType.AttackerVsComp
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
-    elif args.game_type == "aiwar":
+    elif args.game_type == "auto":
         game_type = GameType.CompVsComp
     else:
         game_type = GameType.AttackerVsDefender

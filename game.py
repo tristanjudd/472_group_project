@@ -15,7 +15,7 @@ from gameType import GameType
 import board
 import algorithms
 import random
-from stats import Stats, MinimaxStatCollector
+from stats import Stats, MinimaxTimeManager, MinimaxDepthManager
 
 
 # maximum and minimum values for our heuristic scores (usually represents an end of game condition)
@@ -26,7 +26,7 @@ MIN_HEURISTIC_SCORE = -2000000000
 class Options:
     """Representation of the game options."""
     dim: int = 5
-    max_depth : int | None = 4
+    max_depth : int | None = 10
     min_depth : int | None = 2
     max_time : float | None = 5.0
     game_type : GameType = GameType.AttackerVsDefender
@@ -52,6 +52,7 @@ class Game:
         self.set_initial_board_configuration()
 
         self.logger = logger.Logger(self)
+        self.depth_manager = MinimaxDepthManager(self.options.min_depth, self.options.max_depth)
 
     def set_initial_board_configuration(self):
         dim = self.board.get_dim()
@@ -141,7 +142,7 @@ class Game:
 
     def get_move_from_minimax(self, is_alpha_beta: bool) -> (int, CoordPair, float):
         # Instantiate the Stat collector
-        stat_collector = MinimaxStatCollector(self.options.max_time)
+        time_manager = MinimaxTimeManager(self.options.max_time)
 
         # Keep track of all the best-scoring moves
         best_score = None
@@ -151,7 +152,10 @@ class Game:
         current_player_is_max = Player.is_max(current_player)
         start_depth = 1
 
+        recommended_depth: int = self.depth_manager.get_depth()
 
+        print(f'RECOMMENDED DEPTH {recommended_depth}')
+        print(f'BINARY SEARCH ON DEPTH {self.depth_manager.binary_search}')
 
         for move in self.board.move_candidates(current_player):
             moved_board = self.board.clone_and_move(move, current_player)
@@ -160,7 +164,8 @@ class Game:
             if moved_board is None:
                 continue
 
-            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth, MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE, is_alpha_beta, self.stats)
+            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, recommended_depth, 
+                                                  MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE, is_alpha_beta, self.stats, time_manager)
 
             print("move", move, "has score", score)
 
@@ -171,6 +176,8 @@ class Game:
             elif best_score == score:
                 best_moves.append(move)
 
+        self.depth_manager.notify(time_manager.did_minimax_return_early())
+        
         picked_move = self.pick_best_move(best_moves, best_score)
         # TODO: Track and calculate average depth
         avg_depth = 0.0
@@ -298,7 +305,7 @@ class Game:
         branch_depths = sorted_depths[1:] 
         branch_evals = sum([self.stats.evaluations_per_depth[k] for k in branch_depths])
 
-        print_fn(f"Average branching factor: {branch_evals/float(parent_evals):0.1f}")
+        print_fn(f"Average branching factor: {self.stats.get_branching_factor():0.1f}")
 
 
         if self.stats.total_seconds > 0:

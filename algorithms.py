@@ -5,7 +5,7 @@ from player import Player
 from unit import UnitType
 import sys
 import game
-from stats import Stats
+from stats import Stats, MinimaxTimeManager
 
 
 ##############################################################################################################
@@ -97,16 +97,18 @@ def better_move(is_max: bool, original_score: int | None, new_score: int) -> boo
 
 
 def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], depth: int, MAX_DEPTH: int, beta: int,
-                       alpha: int, is_alpha_beta: bool, evaluate: Stats) -> int:
+                       alpha: int, is_alpha_beta: bool, evaluate: Stats, time_manager: MinimaxTimeManager) -> int:
     evaluate.record_evaluation(depth)
 
-    if depth == MAX_DEPTH:
+    if depth >= MAX_DEPTH:
         return e(board)
 
     # score
     best_score = None
 
     current_player = Player.get_max_player() if is_max else Player.get_min_player()
+
+    branch_count = 0
 
     for c_move in board.move_candidates(current_player):
         c_board = board.clone_and_move(c_move, current_player)
@@ -115,7 +117,9 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
         if c_board is None:
             continue
 
-        c_score = alpha_beta_minimax(c_board, not is_max, e, depth + 1, MAX_DEPTH, beta, alpha, is_alpha_beta, evaluate)
+        branch_count += 1
+
+        c_score = alpha_beta_minimax(c_board, not is_max, e, depth + 1, MAX_DEPTH, beta, alpha, is_alpha_beta, evaluate, time_manager)
 
         if better_move(is_max, best_score, c_score):
             best_score = c_score
@@ -129,8 +133,11 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
 
                 if beta <= alpha:
                     return best_score
-        
-        
+                
+        if time_manager.minimax_should_return():
+            break
+    
+    evaluate.record_branching(branch_count)
 
     # If you cannot perform a move, you have no units and you lost
     if best_score is None:
