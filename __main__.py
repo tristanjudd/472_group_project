@@ -20,10 +20,10 @@ def main():
         game_type = GameType.AttackerVsComp
     elif args.game_type == "defender":
         game_type = GameType.CompVsDefender
-    elif args.game_type == "manual":
-        game_type = GameType.AttackerVsDefender
-    else:
+    elif args.game_type == "aiwar":
         game_type = GameType.CompVsComp
+    else:
+        game_type = GameType.AttackerVsDefender
 
     # set up game options
     options = Options(game_type=game_type)
