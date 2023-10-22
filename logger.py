@@ -2,14 +2,12 @@ from io import TextIOWrapper
 from coord import CoordPair
 from player import Player
 from gameType import GameType
-import game as GameModule
 
 
 class Logger:
     output_file: TextIOWrapper
-    game: GameModule.Game
 
-    def __init__(self, game: GameModule.Game):
+    def __init__(self, game):
         self.game = game
         self.setup_output_file()
         self.log_game_parameters()
