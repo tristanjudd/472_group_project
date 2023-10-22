@@ -139,3 +139,11 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
         return game.MIN_HEURISTIC_SCORE if is_max else game.MAX_HEURISTIC_SCORE
     else:
         return best_score
+
+def human_format(num):
+    num = float('{:.3g}'.format(num))
+    magnitude = 0
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+    return '{}{}'.format('{:f}'.format(num).rstrip('0').rstrip('.'), ['', 'K', 'M', 'B', 'T'][magnitude])

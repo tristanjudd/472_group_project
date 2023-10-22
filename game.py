@@ -183,6 +183,8 @@ class Game:
         print("best moves with score", best_score, "are:", ', '.join(str(m) for m in best_moves))
         picked_move = random.choice(best_moves)
         print("random move picked out of the best moves is", picked_move)
+        print()
+        print()
         return picked_move
 
     def human_turn(self):
@@ -260,18 +262,38 @@ class Game:
         elapsed_seconds = (datetime.now() - start_time).total_seconds()
         self.stats.total_seconds += elapsed_seconds
 
-        print(f"Heuristic score: {score}")
-        print(f"Average recursive depth: {avg_depth:0.1f}")
-        print(f"Evals per depth: ",end='')
-
-        for k in sorted(self.stats.evaluations_per_depth.keys()):
-            print(f"{k}:{self.stats.evaluations_per_depth[k]} ",end='')
-        print()
         total_evals = sum(self.stats.evaluations_per_depth.values())
+
+        print(f"Heuristic score: {score}")
+        print(f"Cumulative evals: {total_evals}")
+        print(f"Cumulative evals per depth: ",end='')
+
+        sorted_depths = list(self.stats.evaluations_per_depth.keys())
+        sorted_depths.sort()
+
+        for k in sorted_depths:
+            print(f"{k}={algorithms.human_format(self.stats.evaluations_per_depth[k])} ",end='')
+        print()
+
+        print(f"Cumulative % evals per depth: ",end='')
+        for k in sorted_depths:
+            percent = 100 * float(self.stats.evaluations_per_depth[k])/total_evals
+            print(f"{k}={percent:.2f}% ",end='')
+        print()
+
+        # Calculating average branching factor
+        parent_depths = sorted_depths[:-1] 
+        parent_evals = sum([self.stats.evaluations_per_depth[k] for k in parent_depths])
+        branch_depths = sorted_depths[1:] 
+        branch_evals = sum([self.stats.evaluations_per_depth[k] for k in branch_depths])
+
+        print(f"Average branching factor: {branch_evals/float(parent_evals):0.1f}")
+
 
         if self.stats.total_seconds > 0:
             print(f"Eval perf.: {total_evals/self.stats.total_seconds/1000:0.1f}k/s")
         print(f"Elapsed time: {elapsed_seconds:0.1f}s")
+        print()
         return move
 
     def post_move_to_broker(self, move: CoordPair):
