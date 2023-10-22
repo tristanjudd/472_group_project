@@ -98,6 +98,7 @@ def better_move(is_max: bool, original_score: int | None, new_score: int) -> boo
 
 def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], depth: int, MAX_DEPTH: int, beta: int,
                        alpha: int, is_alpha_beta: bool, evaluate: Stats) -> int:
+    evaluate.record_evaluation(depth)
     if depth == MAX_DEPTH:
         return e(board)
 
@@ -113,7 +114,6 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
         if c_board is None:
             continue
 
-        evaluate.record_evaluation(depth, MAX_DEPTH)
         c_score = alpha_beta_minimax(c_board, not is_max, e, depth + 1, MAX_DEPTH, beta, alpha, is_alpha_beta, evaluate)
 
 

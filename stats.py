@@ -9,7 +9,7 @@ class Stats:
     evaluations_per_depth: dict[int, int] = field(default_factory=dict)
     total_seconds: float = 0.0
 
-    def record_evaluation(self, current_depth: int, max_depth: int):
+    def record_evaluation(self, current_depth: int):
         """Record an evaluation at a specific depth."""
         if current_depth in self.evaluations_per_depth:
             self.evaluations_per_depth[current_depth] += 1
