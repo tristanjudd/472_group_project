@@ -265,7 +265,7 @@ class Game:
         total_evals = sum(self.stats.evaluations_per_depth.values())
 
         print(f"Heuristic score: {score}")
-        print(f"Cumulative evals: {total_evals}")
+        print(f"Cumulative evals: {algorithms.human_format(total_evals)}")
         print(f"Cumulative evals per depth: ",end='')
 
         sorted_depths = list(self.stats.evaluations_per_depth.keys())
