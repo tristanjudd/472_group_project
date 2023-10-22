@@ -4,6 +4,7 @@ from enum import Enum
 class Player(Enum):
     """The 2 players."""
     Attacker = 0
+
     Defender = 1
 
     def next(self) -> Player:
@@ -13,8 +14,16 @@ class Player(Enum):
         else:
             return Player.Attacker
     
+    def get_heuristic(self):
+        import algorithms
+
+        if self is Player.Attacker:
+            return algorithms.e2
+        else:
+            return algorithms.e1
+
+    
     # Hard assignment on who's looking to minimize and maximize scores
-    @staticmethod
     def is_max(self) -> bool:
         return self is self.get_max_player()
     

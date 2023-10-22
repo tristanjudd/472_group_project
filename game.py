@@ -150,11 +150,12 @@ class Game:
 
         current_player = self.next_player
         current_player_is_max = Player.is_max(current_player)
+        heuristic = current_player.get_heuristic()
+
         start_depth = 1
+        recommended_max_depth: int = self.depth_manager.get_depth()
 
-        recommended_depth: int = self.depth_manager.get_depth()
-
-        print(f'RECOMMENDED DEPTH {recommended_depth}')
+        print(f'RECOMMENDED DEPTH {recommended_max_depth}')
         print(f'BINARY SEARCH ON DEPTH {self.depth_manager.binary_search}')
 
         for move in self.board.move_candidates(current_player):
@@ -164,7 +165,7 @@ class Game:
             if moved_board is None:
                 continue
 
-            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, recommended_depth, 
+            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, heuristic, start_depth, recommended_max_depth, 
                                                   MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE, is_alpha_beta, self.stats, time_manager)
 
             print("move", move, "has score", score)

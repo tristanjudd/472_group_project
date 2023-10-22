@@ -30,6 +30,7 @@ class Logger:
 
         self.log_nl("GAME PARAMETERS")
         self.log_nl(f'Timeout Value: {max_time} seconds')
+        self.log_nl(f'Max number of turns: {max_turns} seconds')
         if options.alpha_beta:
             self.log_nl(f' (alpha-beta={is_alpha_beta})')
             
@@ -37,14 +38,14 @@ class Logger:
         if options.game_type == GameType.AttackerVsComp or options.game_type == GameType.AttackerVsDefender:
             self.log_nl("Player 1 is a Human")
         else:
-            heuristic = "e0"
-            self.log_nl(f'Player 1 is an AI with heuristic {heuristic}')
+            heuristic = Player.Attacker.get_heuristic().__name__
+            self.log_nl(f'Player 1 (Attacker) is an AI with heuristic {heuristic}')
 
         if options.game_type == GameType.AttackerVsDefender or options.game_type == GameType.CompVsDefender:
             self.log_nl("Player 2 is a Human")
         else:
-            heuristic = "e0"
-            self.log_nl(f'Player 2 is an AI with heuristic {heuristic}')
+            heuristic = Player.Defender.get_heuristic().__name__
+            self.log_nl(f'Player 2 (Defender) is an AI with heuristic {heuristic}')
 
     def setup_output_file(self):
         options = self.game.options
