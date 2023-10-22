@@ -132,3 +132,27 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
   else:
     return best_score
 
+##############################################################################################################
+
+class MinimaxDepthPicker:
+  start: int
+  end: int
+  max: int
+  def __init__(self, min: int, max: int):
+      self.start = min
+      self.end = max
+
+  def get_depth(self) -> int:
+     return (self.start + self.end)/2
+
+  def returned_early(self, early_return: bool):
+    mid: int = self.get_depth()
+
+    if early_return:
+      self.end = mid
+    else:
+      self.start = mid
+
+      # increase the range as the game progresses
+      if self.end + 1 <= self.max:
+         self.end += 1
