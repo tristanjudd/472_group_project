@@ -83,7 +83,7 @@ class Game:
         new.next_player = copy.deepcopy(self.next_player)
 
         return new
-    
+
     def start(self):
             # the main game loop
         while True:
@@ -108,7 +108,7 @@ class Game:
                 else:
                     print("Computer doesn't know what to do!!!")
                     exit(1)
-    
+
 
 
     def next_turn(self):
@@ -122,14 +122,14 @@ class Game:
         output += f"Next player: {self.next_player.name}\n"
         output += f"Turns played: {self.turns_played}\n"
         return output + self.board_to_string()
-    
+
     def board_to_string(self) -> str:
         return self.board.to_string()
 
     def __str__(self) -> str:
         """Default string representation of a game."""
         return self.to_string()
-    
+
 
     def read_move(self) -> CoordPair:
         """Read a move from keyboard and return as a CoordPair."""
@@ -140,9 +140,9 @@ class Game:
                 return coords
             else:
                 print('Invalid coordinates! Try again.')
-    
+
     def get_move_from_minimax(self, is_alpha_beta: bool) -> (int, CoordPair, float):
-        # Instanciate the Stat collector
+        # Instantiate the Stat collector
         stat_collector = MinimaxStatCollector(self.options.max_time)
 
         # Keep track of all the best-scoring moves
@@ -154,14 +154,15 @@ class Game:
         start_depth = 1
 
 
+
         for move in self.board.move_candidates(current_player):
             moved_board = self.board.clone_and_move(move, current_player)
 
             # Move could not be performed
             if moved_board is None:
                 continue
-            
-            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth, MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE, is_alpha_beta)
+
+            score = algorithms.alpha_beta_minimax(moved_board, not current_player_is_max, algorithms.e0, start_depth, self.options.max_depth, MAX_HEURISTIC_SCORE, MIN_HEURISTIC_SCORE, is_alpha_beta, self.stats)
 
             print("move", move, "has score", score)
 
@@ -177,7 +178,7 @@ class Game:
         avg_depth = 0.0
 
         return (best_score, picked_move, avg_depth)
-    
+
     def pick_best_move(self, best_moves: list[CoordPair], best_score: int):
         print("best moves with score", best_score, "are:", ', '.join(str(m) for m in best_moves))
         picked_move = random.choice(best_moves)
