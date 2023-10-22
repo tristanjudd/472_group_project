@@ -9,6 +9,8 @@ from copy import deepcopy
 # for (src,_) in self.player_units(self.next_player):
 class Board:
     grid: list[list[Unit | None]]
+    _attacker_has_ai : bool = True
+    _defender_has_ai : bool = True
 
     def __init__(self, grid: list[list[Unit | None]] | None = None):
         dim = 5
