@@ -99,6 +99,7 @@ def better_move(is_max: bool, original_score: int | None, new_score: int) -> boo
 def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], depth: int, MAX_DEPTH: int, beta: int,
                        alpha: int, is_alpha_beta: bool, evaluate: Stats) -> int:
     evaluate.record_evaluation(depth)
+
     if depth == MAX_DEPTH:
         return e(board)
 
@@ -116,11 +117,6 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
 
         c_score = alpha_beta_minimax(c_board, not is_max, e, depth + 1, MAX_DEPTH, beta, alpha, is_alpha_beta, evaluate)
 
-
-        # TODO: This can be used for early exit after X amount of time.
-        if c_score is None:
-            print(c_board.to_string())
-
         if better_move(is_max, best_score, c_score):
             best_score = c_score
 
@@ -133,6 +129,8 @@ def alpha_beta_minimax(board: Board, is_max: bool, e: Callable[[Board], int], de
 
                 if beta <= alpha:
                     return best_score
+        
+        
 
     # If you cannot perform a move, you have no units and you lost
     if best_score is None:
