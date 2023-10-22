@@ -193,7 +193,7 @@ class Board:
 
     """Check that source coords are not empty and unit belongs to current player"""
     unit = self.get(coords.src)
-    # if unit is None or unit.player != self.next_player:
+    
     if unit is None or unit.player != player:
         return False
 
@@ -201,19 +201,6 @@ class Board:
     """Check that destination cell is source (self-destruct), up, right, down or left"""
     if coords.dst != coords.src and coords.dst not in coords.src.iter_adjacent():
         return False
-
-    """If destination coords is empty, this is a move action"""
-    # if self.get(coords.dst) is None:
-    #     """If unit is an AI, Firewall or Program, it cannot move while engaged"""
-    #     if unit.type in [UnitType.AI, UnitType.Firewall, UnitType.Program]:
-    #         neighborhood = coords.src.iter_adjacent()
-    #         """Check if unit is egnaged"""
-    #         for n in neighborhood:
-    #             n_unit = self.get(n)
-    #             if n_unit is not None and n_unit.player != self.next_player:
-    #                 print("This unit cannot move while engaged")
-    #                 return False
-    #End Tristan code
 
     return True
   
